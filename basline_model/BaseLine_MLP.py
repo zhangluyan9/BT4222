@@ -31,7 +31,24 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
-
+"""
+fc1.weight       torch.Size([128, 50])
+fc1.bias         torch.Size([128])
+Bn1.weight       torch.Size([128])
+Bn1.bias         torch.Size([128])
+Bn1.running_mean         torch.Size([128])
+Bn1.running_var          torch.Size([128])
+Bn1.num_batches_tracked          torch.Size([])
+fc2.weight       torch.Size([128, 128])
+fc2.bias         torch.Size([128])
+Bn2.weight       torch.Size([128])
+Bn2.bias         torch.Size([128])
+Bn2.running_mean         torch.Size([128])
+Bn2.running_var          torch.Size([128])
+Bn2.num_batches_tracked          torch.Size([])
+fc3.weight       torch.Size([5, 128])
+fc3.bias         torch.Size([5])
+"""
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -162,21 +179,3 @@ for epoch in range(1, args.epochs + 1):
 print(ACC)
 #52110/100000
 
-"""
-fc1.weight       torch.Size([128, 50])
-fc1.bias         torch.Size([128])
-Bn1.weight       torch.Size([128])
-Bn1.bias         torch.Size([128])
-Bn1.running_mean         torch.Size([128])
-Bn1.running_var          torch.Size([128])
-Bn1.num_batches_tracked          torch.Size([])
-fc2.weight       torch.Size([128, 128])
-fc2.bias         torch.Size([128])
-Bn2.weight       torch.Size([128])
-Bn2.bias         torch.Size([128])
-Bn2.running_mean         torch.Size([128])
-Bn2.running_var          torch.Size([128])
-Bn2.num_batches_tracked          torch.Size([])
-fc3.weight       torch.Size([5, 128])
-fc3.bias         torch.Size([5])
-"""
