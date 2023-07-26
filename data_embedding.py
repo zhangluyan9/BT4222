@@ -51,27 +51,28 @@ from nltk.tokenize import word_tokenize
 nltk.download('punkt')
 nltk.download('stopwords')
 
-# 加载数据
+# load data
 train_data = pd.read_csv('train_dataset.csv')
 test_data = pd.read_csv('test_dataset.csv')
 
-# 获取英语停止词
+# get the stopword
 stop_words = set(stopwords.words('english'))
 
-# 定义一个函数来清洗文本
 def clean_text(text):
-    # 转换为小写
+    #Converts all characters in text to lowercase.
     text = text.lower()
-    # 去除符号
+
+    #converts all characters in text to lowercase
+    #replace all non-word characters (characters that are not a letter, digit, or underscore) in text with a space.
     text = re.sub(r'\W', ' ', text)
-    # 替换数字
     text = re.sub(r'\d', '', text)
-    # 去除停止词
+
     words = word_tokenize(text)
+    #split the text into individual words.
+
     words = [word for word in words if word not in stop_words]
     return ' '.join(words)
 
-# 清洗数据
 train_data['text'] = train_data['text'].apply(clean_text)
 test_data['text'] = test_data['text'].apply(clean_text)
 print("finish cleaning dataset")
@@ -166,44 +167,47 @@ import pandas as pd
 import numpy as np
 
 
-# 分词
 train_sentences = train_data['text'].apply(word_tokenize).tolist()
 test_sentences = test_data['text'].apply(word_tokenize).tolist()
 
 print("finish seperateing dataset")
 
-# 训练 Word2Vec 模型
+# train Word2Vec model
 model = Word2Vec(sentences=train_sentences, vector_size=50, window=5, min_count=1, workers=4)
 model.save("word2vec_model_all.bin")
 #model = Word2Vec.load("word2vec_model_all.bin")
 print("finish training dataset")
 
-# 获取向量
+
 def get_sentence_vectors(sentences):
     vectors = []
     for sentence in sentences:
+        #This line creates a list of word vectors for each word in the sentence 
+        #that is in the Word2Vec model's vocabulary.
         sentence_vectors = [model.wv[word] for word in sentence if word in model.wv]
         if len(sentence_vectors) == 0:
-            vectors.append([0] * 50)  # 使用 0 向量作为未知词的向量
+            vectors.append([0] * 50)  # If the sentence doesn't have any words that are in
+            # the Word2Vec model's vocabulary, the sentence is represented by a vector of 50 zeros.
         else:
-            vectors.append(np.mean(sentence_vectors, axis=0))  # 使用句子中所有词的向量的平均值作为句子的向量
+            vectors.append(np.mean(sentence_vectors, axis=0))  # Otherwise, the sentence vector is the average
+            # of its word vectors. This vector is then added to the list of sentence vectors.
     return vectors
 
 train_vectors = get_sentence_vectors(train_sentences)
 test_vectors = get_sentence_vectors(test_sentences)
 
-# 转换为张量
+# turn to tensor
 train_vectors = torch.tensor(train_vectors)
-
+#reshpae
 train_vectors = train_vectors.reshape(-1,1,50)
 test_vectors = torch.tensor(test_vectors)
 test_vectors = test_vectors.reshape(-1,1,50)
-# 提取标签
+# get the label
 train_labels = torch.tensor(train_data['stars'].values)
 test_labels = torch.tensor(test_data['stars'].values)
-#print(test_labels)
-# 构建 PyTorch 的 Dataset 和 DataLoader
+#save the training dataset as 'train_vectors.pt' and 'train_labels.pt'  
 torch.save(train_vectors, 'train_vectors.pt')
 torch.save(train_labels, 'train_labels.pt')
+#save the testing dataset as 'test_vectors.pt' and 'test_labels.pt'  
 torch.save(test_vectors, 'test_vectors.pt')
 torch.save(test_labels, 'test_labels.pt')
