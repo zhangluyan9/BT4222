@@ -35,25 +35,44 @@ from torch.optim.lr_scheduler import StepLR
 #"Performance Analysis of Different Neural Networks for Sentiment Analysis on IMDb Movie Reviews"
 #Figure2. and we set it as the LSTM baseline. 
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
+"""
+bi_lstm1.weight_ih_l0    torch.Size([512, 50])
+bi_lstm1.weight_hh_l0    torch.Size([512, 128])
+bi_lstm1.bias_ih_l0      torch.Size([512])
+bi_lstm1.bias_hh_l0      torch.Size([512])
+bi_lstm2.weight_ih_l0    torch.Size([512, 128])
+bi_lstm2.weight_hh_l0    torch.Size([512, 128])
+bi_lstm2.bias_ih_l0      torch.Size([512])
+bi_lstm2.bias_hh_l0      torch.Size([512])
+fc1.weight       torch.Size([5, 128])
+fc1.bias         torch.Size([5])
+"""
 
-        #########################################
-        #MLP
-        #self.Bn3 = nn.BatchNorm1d(32)
-        #self.fc4 = nn.Linear(128, 5, bias=True)
+class Net(nn.Module):  
+    def __init__(self):  
+        super(Net, self).__init__()  # Calls the constructor of the parent class nn.Module.
+        
+        # Define a LSTM (Long Short-Term Memory) layer. It takes inputs of size 50, outputs of size 128, 1 layer, processes batches first, and is unidirectional.
         self.bi_lstm1 = nn.LSTM(input_size=50, hidden_size=128, num_layers=1, batch_first=True, bidirectional=False)
+        
+        # Define a second LSTM layer. Takes inputs of size 128 (from the previous LSTM layer), outputs of size 128, 1 layer, processes batches first, and is unidirectional.
         self.bi_lstm2 = nn.LSTM(input_size=128, hidden_size=128, num_layers=1, batch_first=True, bidirectional=False)
+        
+        # A fully connected (linear) layer that takes inputs of size 128 (from the previous LSTM layer) and outputs 5 nodes.
         self.fc1 = nn.Linear(128, 5, bias=True)
 
-
-    def forward(self, x):
-        x = torch.flatten(x, 1)
-        x, _ = self.bi_lstm1(x)
-        x, _ = self.bi_lstm2(x)
+    def forward(self, x):  
+        #x = torch.flatten(x, 1) 
+        # Flattens the input. Because for lstm here, we use seq of lenth 1. we can just use a 2d vector as the input of nn.LSTM
+        x = torch.flatten(x, 1) 
+        x, _ = self.bi_lstm1(x)  
+        # Pass the input through the first LSTM layer.
+        x, _ = self.bi_lstm2(x)  
+        # Pass the output from the previous LSTM layer through the second LSTM layer.、
         x= self.fc1(x)
-        return x
+         
+        # Pass the output from the previous LSTM layer through the fully connected layer.
+        return x  
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -63,8 +82,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         
         target = target-1
         target = target.long()
-        #print(target)
-        #print(target.shape)
+
         optimizer.zero_grad()
         output = model(data)
         #print(output)
@@ -128,6 +146,7 @@ torch.manual_seed(args.seed)
 
 device = torch.device("cuda" if use_cuda else "cpu")
 model = Net().to(device)
+#model.load_state_dict(torch.load("Baseline_lstm.pt"), strict=False)
 
 if args.resume != None:
     load_model(torch.load(args.resume), model)
@@ -153,22 +172,10 @@ for epoch in range(1, args.epochs + 1):
     ACC_ = test(model, device, test_loader)
     if ACC_>ACC or ACC_ == ACC:
         ACC = ACC_
-        torch.save(model.state_dict(), "Baseline_lstm.pt")
+        torch.save(model.state_dict(), "Baseline_lstm_.pt")
     
     scheduler.step()
 
-print(ACC)
+print(test(model, device, test_loader))
 #56338/100000
 
-"""
-bi_lstm1.weight_ih_l0    torch.Size([512, 50])
-bi_lstm1.weight_hh_l0    torch.Size([512, 128])
-bi_lstm1.bias_ih_l0      torch.Size([512])
-bi_lstm1.bias_hh_l0      torch.Size([512])
-bi_lstm2.weight_ih_l0    torch.Size([512, 128])
-bi_lstm2.weight_hh_l0    torch.Size([512, 128])
-bi_lstm2.bias_ih_l0      torch.Size([512])
-bi_lstm2.bias_hh_l0      torch.Size([512])
-fc1.weight       torch.Size([5, 128])
-fc1.bias         torch.Size([5])
-"""
