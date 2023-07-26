@@ -35,12 +35,50 @@ from torch.optim.lr_scheduler import StepLR
 #"Hierarchical Attentional Hybrid Neural Networks for Document Classification"
 #Figure1. For fair compasrsion, we encoding the whole document as a vector of 50 and add 3 CNN layers to extract the information
 #Then, follow by two blocks mention in paper
+"""
+conv1.weight     torch.Size([32, 1, 3])
+conv1.bias       torch.Size([32])
+Bn1.weight       torch.Size([32])
+Bn1.bias         torch.Size([32])
+Bn1.running_mean         torch.Size([32])
+Bn1.running_var          torch.Size([32])
+Bn1.num_batches_tracked          torch.Size([])
+conv2.weight     torch.Size([32, 1, 3])
+conv2.bias       torch.Size([32])
+Bn2.weight       torch.Size([32])
+Bn2.bias         torch.Size([32])
+Bn2.running_mean         torch.Size([32])
+Bn2.running_var          torch.Size([32])
+Bn2.num_batches_tracked          torch.Size([])
+conv3.weight     torch.Size([32, 1, 3])
+conv3.bias       torch.Size([32])
+Bn3.weight       torch.Size([32])
+Bn3.bias         torch.Size([32])
+Bn3.running_mean         torch.Size([32])
+Bn3.running_var          torch.Size([32])
+Bn3.num_batches_tracked          torch.Size([])
+bi_lstm1.weight_ih_l0    torch.Size([400, 960])
+bi_lstm1.weight_hh_l0    torch.Size([400, 100])
+bi_lstm1.bias_ih_l0      torch.Size([400])
+bi_lstm1.bias_hh_l0      torch.Size([400])
+fc1.weight       torch.Size([100, 100])
+fc1.bias         torch.Size([100])
+self_attn_1.in_proj_weight       torch.Size([300, 100])
+self_attn_1.in_proj_bias         torch.Size([300])
+self_attn_1.out_proj.weight      torch.Size([100, 100])
+self_attn_1.out_proj.bias        torch.Size([100])
+fc2.weight       torch.Size([5, 100])
+fc2.bias         torch.Size([5])
+"""
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
+        # Define the first convolutional layer
         self.conv1 = nn.Conv1d(1, 32, 3, 1,1, bias=True)
+        # Define the batch normalization layer for the first conv layer
         self.Bn1 = nn.BatchNorm1d(32)
+        # Define the max pooling layer for the first conv layer
         self.pool1=nn.MaxPool1d(kernel_size=5, stride=5)
 
         self.conv2 = nn.Conv1d(1, 32, 3, 1,1, bias=True)
@@ -51,41 +89,41 @@ class Net(nn.Module):
         self.Bn3 = nn.BatchNorm1d(32)
         self.pool3=nn.MaxPool1d(kernel_size=5, stride=5)
 
-        #########################################
-        #MLP
-
-       
+        # Define LSTM layer with input size of 960 and hidden size of 100
         self.bi_lstm1 = nn.LSTM(input_size=960, hidden_size=100, num_layers=1, batch_first=True, bidirectional=False)
+        # Define the first fully connected layer after LSTM
         self.fc1 = nn.Linear(100, 100, bias=True)
-        self.self_attn_1 = nn.MultiheadAttention(embed_dim=100, num_heads=4) # Self-attention layer
-        #Here, becasue we encode the whole document as one vector already, no need for one more block to extract the sentence informations.
+        # Define self-attention layer
+        self.self_attn_1 = nn.MultiheadAttention(embed_dim=100, num_heads=4)
+        # Define the final fully connected layer for classification
         self.fc2 = nn.Linear(100, 5, bias=True)
-        
-
-        #self.fc2 = nn.Linear(128, 10, bias=True)
-
-
 
     def forward(self, x):
-        #print(x.shape)
+        # Pass input through the first convolutional layer, then through the ReLU activation function, then through max pooling
         x_layer1 = self.pool1(F.relu(self.Bn1(self.conv1(x))))
-        #One layer works better than three
         x_layer2 = self.pool1(F.relu(self.Bn2(self.conv2(x))))
         x_layer3 = self.pool1(F.relu(self.Bn3(self.conv3(x))))
+        # Concatenate the outputs of the three layers along the channel dimension
         x = torch.cat((x_layer1, x_layer2,x_layer3), 1)
 
+        # Flatten the tensor for the fully connected layers
         x = torch.flatten(x, 1)
 
+        # Pass input through the LSTM layer
         x, _ = self.bi_lstm1(x)
+        # Pass output of LSTM layer through the first fully connected layer, then through the ReLU activation function
         x = F.relu(self.fc1(x))
+        # Reshape the tensor for the self-attention layer
         x = x.view(-1, 1, 100)
+        # Pass tensor through the self-attention layer
         x, _ = self.self_attn_1(x.permute(1, 0, 2), x.permute(1, 0, 2), x.permute(1, 0, 2))
+        # Reshape tensor back to original shape
         x = x.permute(1, 0, 2)
         x = x.view(-1, 100)
+        # Pass the output through the final fully connected layer for classification
         x = self.fc2(x)
 
         return x
-
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
